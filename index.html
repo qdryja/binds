@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Soundboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Navbar */
+        nav {
+            background: #1c1c1e;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border-bottom: 1px solid #2c2c2e;
+        }
+
+        nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .category-btn {
+            background: #2c2c2e;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .category-btn.active {
+            background: #0a84ff;
+        }
+
+        .category-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Main content */
+        main {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Grid */
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 12px;
+            height: 100%;
+            max-height: calc(100vh - 80px);
+        }
+
+        .sound-btn {
+            background: linear-gradient(135deg, #2c2c2e 0%, #1c1c1e 100%);
+            border: 1px solid #3a3a3c;
+            border-radius: 16px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 12px;
+            min-height: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sound-btn:active {
+            transform: scale(0.95);
+            background: linear-gradient(135deg, #0a84ff 0%, #0056b3 100%);
+            border-color: #0a84ff;
+        }
+
+        .sound-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(10, 132, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .sound-btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .sound-btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Playing animation */
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .sound-btn.playing {
+            animation: pulse 0.5s ease;
+            background: linear-gradient(135deg, #0a84ff 0%, #0056b3 100%);
+            border-color: #0a84ff;
+        }
+    </style>
+</head>
+<body>
+    <nav id="navbar">
+        <button class="category-btn active" data-category="effects">Efekty</button>
+        <button class="category-btn" data-category="music">Muzyka</button>
+        <button class="category-btn" data-category="voices">Głosy</button>
+        <button class="category-btn" data-category="ambient">Ambient</button>
+    </nav>
+
+    <main>
+        <div class="sound-grid" id="soundGrid"></div>
+    </main>
+
+    <script>
+        // Sound data for different categories
+        const soundData = {
+            effects: [
+                'Applause', 'Drum Roll', 'Air Horn', 'Explosion', 'Laser',
+                'Swoosh', 'Pop', 'Click', 'Bell', 'Whistle',
+                'Crash', 'Ding', 'Buzz', 'Boing', 'Splash'
+            ],
+            music: [
+                'Beat 1', 'Beat 2', 'Bass Drop', 'Synth 1', 'Synth 2',
+                'Piano', 'Guitar', 'Drums', 'Loop 1', 'Loop 2',
+                'Chord 1', 'Chord 2', 'Melody 1', 'Melody 2', 'Riff'
+            ],
+            voices: [
+                'Ha Ha', 'Wow', 'Oh No', 'Yes!', 'Bravo',
+                'Hey!', 'Oops', 'Yay', 'Hmm', 'Ugh',
+                'Woo!', 'Aww', 'Tada', 'Psst', 'Shh'
+            ],
+            ambient: [
+                'Rain', 'Ocean', 'Wind', 'Forest', 'Fire',
+                'Thunder', 'Birds', 'City', 'Night', 'Cave',
+                'Space', 'Water', 'Desert', 'Jungle', 'Snow'
+            ]
+        };
+
+        let currentCategory = 'effects';
+
+        // Initialize
+        function init() {
+            renderSounds(currentCategory);
+            setupCategoryButtons();
+        }
+
+        // Render sound buttons
+        function renderSounds(category) {
+            const grid = document.getElementById('soundGrid');
+            grid.innerHTML = '';
+            
+            soundData[category].forEach((sound, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'sound-btn';
+                btn.innerHTML = `<span>${sound}</span>`;
+                btn.addEventListener('click', () => playSound(btn, sound));
+                grid.appendChild(btn);
+            });
+        }
+
+        // Setup category buttons
+        function setupCategoryButtons() {
+            const buttons = document.querySelectorAll('.category-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    buttons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentCategory = btn.dataset.category;
+                    renderSounds(currentCategory);
+                });
+            });
+        }
+
+        // Play sound (with visual feedback)
+        function playSound(button, soundName) {
+            // Add playing class for animation
+            button.classList.add('playing');
+            
+            // Haptic feedback for iOS
+            if (window.navigator.vibrate) {
+                window.navigator.vibrate(50);
+            }
+            
+            // Here you would play the actual sound
+            // For now, just console log and visual feedback
+            console.log(`Playing: ${soundName}`);
+            
+            // Remove playing class after animation
+            setTimeout(() => {
+                button.classList.remove('playing');
+            }, 500);
+            
+            // To add actual sounds, you would use:
+            // const audio = new Audio(`sounds/${soundName}.mp3`);
+            // audio.play();
+        }
+
+        // Initialize on load
+        init();
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>
